@@ -1,2 +1,4 @@
 curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X GET http://localhost:3000/
-curl -d '{"key1":"value1", "key2":"value2"}' -H "Content-Type: application/json" -X POST http://localhost:3000/data
+
+curl -d "{}" -H "Content-Type: application/json" -X POST http://localhost:3000/modules
+curl -d "{ \"name\" : \"SSDD\" }" -H "Content-Type: application/json" -X POST http://localhost:3000/modules
