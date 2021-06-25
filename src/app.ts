@@ -1,6 +1,15 @@
 import express from 'express';
 import { MongoClient, Db } from 'mongodb';
 
+interface Module {
+  name: string;
+}
+
+interface Requirement {
+  reqid: string,
+  text: string
+}
+
 class Database {
   private db: Db;
 
@@ -17,12 +26,12 @@ class Database {
   }
 
   async get_modules() {
-    return this.db.collection('modules').find().toArray()
+    return this.db.collection<Module>('modules').find().toArray()
   }
 
   async add_module(name: string) {
     const doc = { name };
-    return this.db.collection('modules').insertOne(doc).then((result) => {
+    return this.db.collection<Module>('modules').insertOne(doc).then((result) => {
       return result.ops[0];
     });
   }
@@ -31,12 +40,12 @@ class Database {
     const filter = {
       module: `${id}`
     };
-    return this.db.collection('requirements').find(filter).toArray()
+    return this.db.collection<Requirement>('requirements').find(filter).toArray()
   }
 
   async add_requirement(id_module: string, text: string) {
     const doc = {module: id_module, text };
-    const result = await this.db.collection('requirements').insertOne(doc);
+    const result = await this.db.collection<Requirement>('requirements').insertOne(doc);
     console.log(result.ops[0]);
   }
 }
