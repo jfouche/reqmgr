@@ -5,6 +5,10 @@ interface Module {
   name: string;
 }
 
+interface Requirements {
+  reqs: Requirement[];
+}
+
 interface Requirement {
   reqid: string,
   text: string
@@ -31,28 +35,49 @@ class Database {
 
   async add_module(name: string) {
     const doc = { name };
-    return this.db.collection<Module>('modules').insertOne(doc).then((result) => {
+    return this.db.collection<Module>('modules').insertOne(doc).then(async (result) => {
+      const id = result.ops[0]._id;
+      await this.db.collection<Requirements>('requirements').insertOne({ _id: id, reqs: [] });
       return result.ops[0];
     });
   }
 
   async del_module(id: string) {
-    return this.db.collection<Module>('modules').deleteOne({_id: new ObjectId(id)}).then((result) => {
+    const oid = new ObjectId(id) 
+    return this.db.collection<Module>('modules').deleteOne({ _id: oid }).then(async (result) => {
+      if (result.deletedCount != 1) return false;
+      result = await this.db.collection<Requirements>('requirements').deleteOne({ _id: oid });
       return result.deletedCount == 1;
     });
   }
 
-  async get_requirements(id: string) {
+  async get_requirements(id_module: string) {
     const filter = {
-      module: `${id}`
+      module: new ObjectId(id_module)
     };
-    return this.db.collection<Requirement>('requirements').find(filter).toArray()
+    return this.db.collection<Requirements>('requirements').find(filter).toArray()
   }
 
-  async add_requirement(id_module: string, text: string) {
-    const doc = {reqid: "", text };
-    const result = await this.db.collection<Requirement>('requirements').insertOne(doc);
-    console.log(result.ops[0]);
+  async add_requirement(id_module: string, reqid: string, text: string) {
+    const filter = {
+      _id: new ObjectId(id_module)
+    };
+    const req = {
+      _id: new ObjectId(),
+      reqid,
+      text
+    }
+    const update = {
+      $push: {
+        reqs: req
+      }
+    };
+    console.log(filter);
+    console.log(update);
+    const res = await this.db.collection<Requirements>('requirements').updateOne(filter, update);
+    
+    console.log(res);
+    return req;
   }
 }
 
@@ -94,15 +119,25 @@ app.delete('/module/:id', async (req, res) => {
   });
   console.log('DELETE /module/<id>', id);
   let deleted = await database.del_module(id);
-  res.send(JSON.stringify({deleted}));
+  res.send(JSON.stringify({ deleted }));
 });
 
 // GET /module/<ID>/requirements
 app.get('/module/:id/requirements', async (req, res) => {
-  const id = req.params.id;
-  const reqs = await database.get_requirements(id);
-  console.log(reqs);
-  console.log(JSON.stringify(reqs));
+  const id_module = req.params.id;
+  console.log(`GET /module/${id_module}/requirements`);
+  const reqs = await database.get_requirements(id_module);
+  res.send(JSON.stringify(reqs));
+});
+
+
+// POST /module/<ID>/requirements text="..." reqid="..."
+app.post('/module/:id/requirements', async (req, res) => {
+  const moduleId = req.params.id;
+  const reqid = req.body.reqid;
+  const text = req.body.text;
+  console.log(`POST /module/${moduleId}/requirements`, reqid, text);
+  const reqs = await database.add_requirement(moduleId, reqid, text);
   res.send(JSON.stringify(reqs));
 });
 
