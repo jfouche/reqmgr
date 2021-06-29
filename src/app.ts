@@ -1,5 +1,5 @@
 import express from 'express';
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient, Db, ObjectId } from 'mongodb';
 
 interface Module {
   name: string;
@@ -36,6 +36,12 @@ class Database {
     });
   }
 
+  async del_module(id: string) {
+    return this.db.collection<Module>('modules').deleteOne({_id: new ObjectId(id)}).then((result) => {
+      return result.deletedCount == 1;
+    });
+  }
+
   async get_requirements(id: string) {
     const filter = {
       module: `${id}`
@@ -44,7 +50,7 @@ class Database {
   }
 
   async add_requirement(id_module: string, text: string) {
-    const doc = {module: id_module, text };
+    const doc = {reqid: "", text };
     const result = await this.db.collection<Requirement>('requirements').insertOne(doc);
     console.log(result.ops[0]);
   }
@@ -64,8 +70,8 @@ const port = 3000;
 
 // GET /modules
 app.get('/modules', async (req, res) => {
+  console.log('GET /modules');
   const modules = await database.get_modules();
-  console.log(modules);
   res.send(JSON.stringify(modules));
 });
 
@@ -75,9 +81,20 @@ app.post('/modules', async (req, res) => {
   if (!name) return res.status(400).send({
     message: "POST /modules : missing name"
   });
+  console.log('POST /modules', name);
   let m = await database.add_module(name);
-  console.log(m);
-  res.send('New post added');
+  res.send(JSON.stringify(m));
+});
+
+// DELETE /module/<id>
+app.delete('/module/:id', async (req, res) => {
+  const id = req.params.id;
+  if (!id) return res.status(400).send({
+    message: "DELETE /modules : missing _id"
+  });
+  console.log('DELETE /module/<id>', id);
+  let deleted = await database.del_module(id);
+  res.send(JSON.stringify({deleted}));
 });
 
 // GET /module/<ID>/requirements
